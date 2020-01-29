@@ -1,11 +1,11 @@
 # Run the `.` command to load this file into the current shell like follow:
-#     user@hostname:~$ . kubectl-wrapper.sh
+#   $ . kubectl-wrapper.sh
 
 # kubect-wrapper displays the current-context and prompts for user confirmation 
 # when trying to execute kubectl's subcommands that can update the cluster's state.
 kubectl() {
-  if [ $# -le 1 ] || (echo " $* " | grep -Eq -- ' -h | --help | --dry-run ') \
-    || (echo " $* " | grep -Eq ' api-resources | api-version | cluster-info | completion | config | describe | diff | explain | get | logs | top | version | wait '); then
+  if [ $# -le 1 ] || { echo " $* " | grep -Eq -- ' -h | --help | --dry-run '; } \
+    || { echo " $* " | grep -Eq ' api-resources | api-version | cluster-info | completion | config | describe | diff | explain | get | logs | top | version | wait '; }; then
     command kubectl "$@"
     return $?
   fi
