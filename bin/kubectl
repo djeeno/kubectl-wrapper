@@ -62,5 +62,10 @@ else
     "${KUBECTL_BIN:?}" "$@";
     exit $?;
   fi;
-  __confirmContext && "${KUBECTL_BIN:?}" "$@"
+  # confirm current-context
+  if ! __confirmContext; then
+    exit 1
+  fi
+  # exec
+  "${KUBECTL_BIN:?}" "$@"
 fi
