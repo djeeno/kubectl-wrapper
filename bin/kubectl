@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+set -Ee -o pipefail
+
+# func
+__stderrError () { printf '\033[31m%s %s\033[0m\n' "$(date +%Y-%m-%dT%H:%M:%S%z) [  error]" "$*" 1>&2; }
+__stderrOK    () { printf '\033[32m%s %s\033[0m\n' "$(date +%Y-%m-%dT%H:%M:%S%z) [     ok]" "$*" 1>&2; }
+__stderrWarn  () { printf '\033[33m%s %s\033[0m\n' "$(date +%Y-%m-%dT%H:%M:%S%z) [warning]" "$*" 1>&2; }
+__stderrInfo  () { printf '\033[34m%s %s\033[0m\n' "$(date +%Y-%m-%dT%H:%M:%S%z) [   info]" "$*" 1>&2; }
+__confirmContext () {
+  printf '\033[33m%s %s \033[1m%s\033[0m\n' "$(date +%Y-%m-%dT%H:%M:%S%z) [warning]" "current-context:" "$("${KUBECTL_BIN:?}" config current-context)" 1>&2
+  printf '\033[33m%s %s\033[0m'   "$(date +%Y-%m-%dT%H:%M:%S%z) [warning]" "press ENTER KEY to continue... " 1>&2
+  read -r;
+}
+
+# var
+REPOSITORY_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || true)
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+if [[ -w "$REPOSITORY_ROOT" ]]; then
+  BASE_DIR="${REPOSITORY_ROOT:?}"
+elif [[ -w "$SCRIPT_DIR" ]]; then
+  BASE_DIR="${SCRIPT_DIR:?}"
+else
+  BASE_DIR="$HOME/.local"
+fi
+
+# kubectl
+KUBECTL_BINARY_FILE=$( { { echo "$PATH" | tr : "\n" | xargs -I@ sh -c "file \"@/kubectl\"" 2>/dev/null; } || true; } | grep -Ev "No such file or directory| text" | head -n 1 | cut -d: -f1 )
+if [[ -x $KUBECTL_BINARY_FILE ]]; then
+  KUBECTL_BIN="${KUBECTL_BINARY_FILE:?}"
+else
+  KUBECTL_BIN="${BASE_DIR:?}/.local/bin/kubectl"
+fi
+
+# setup
+if [[ ! -f ${KUBECTL_BIN:?} ]]; then
+  # if exists and not file, meke backup
+  if [[ -e ${KUBECTL_BIN:?} ]]; then
+    mv -v "${KUBECTL_BIN:?}" ".${KUBECTL_BIN:?}.backup"
+  fi
+  VERSION=$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)
+  SYSTEM=$(uname -s | tr '[:upper:]' '[:lower:]')
+  mkdir -p "$(dirname "${KUBECTL_BIN}")"
+  cmd="curl -fLR https://storage.googleapis.com/kubernetes-release/release/${VERSION:?}/bin/${SYSTEM:?}/amd64/kubectl -o ${KUBECTL_BIN:?}"
+  __stderrInfo "Run: ${cmd:?}" && bash -c "curl -o ${KUBECTL_BIN:?} -fLR https://storage.googleapis.com/kubernetes-release/release/${VERSION:?}/bin/${SYSTEM:?}/amd64/kubectl"
+fi
+if [[ ! -x ${KUBECTL_BIN:?} ]]; then
+  cmd="chmod +x ${KUBECTL_BIN:?}"
+  __stderrInfo "Run: ${cmd:?}" && bash -c "${cmd:?}"
+fi
+
+# main
+if [[ $KUBECTL_CONTEXT ]] && ! { echo "$*" | grep -q -- --context; }; then
+  __stderrInfo "Run: kubectl --context=${KUBECTL_CONTEXT:?} $*"
+  "${KUBECTL_BIN:?}" --context="${KUBECTL_CONTEXT:?}" "$@"
+else
+  # if read only command, no confirm
+  if [[ $# -le 1 ]] || {
+    echo " $* " | grep -Eq -- ' -h | --help | --dry-run '
+  } || {
+    echo " $* " | grep -Eq ' api-resources | api-version | cluster-info | completion | config | describe | diff | explain | get | logs | top | version | wait '
+  }; then
+    "${KUBECTL_BIN:?}" "$@";
+    exit $?;
+  fi;
+  __confirmContext && "${KUBECTL_BIN:?}" "$@"
+fi
