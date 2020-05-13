@@ -1,71 +1,86 @@
 #!/usr/bin/env bash
 set -Ee -o pipefail
 
+
+# var (common)
+repository_root=$(git rev-parse --show-toplevel 2>/dev/null || true)
+script_dir=$(cd "$(dirname "$0")" && pwd)
+script_fullpath="${script_dir:?}/$(basename "$0")"
+
+
 # func
-__stderrError () { printf '\033[31m%s %s\033[0m\n' "$(date +%Y-%m-%dT%H:%M:%S%z) [  error]" "$*" 1>&2; }
-__stderrOK    () { printf '\033[32m%s %s\033[0m\n' "$(date +%Y-%m-%dT%H:%M:%S%z) [     ok]" "$*" 1>&2; }
-__stderrWarn  () { printf '\033[33m%s %s\033[0m\n' "$(date +%Y-%m-%dT%H:%M:%S%z) [warning]" "$*" 1>&2; }
-__stderrInfo  () { printf '\033[34m%s %s\033[0m\n' "$(date +%Y-%m-%dT%H:%M:%S%z) [   info]" "$*" 1>&2; }
+__stderrNotice () { printf '\033[01m%s %s\033[0m\n' "$(date +%Y-%m-%dT%H:%M:%S%z) [ notice]" "$*" 1>&2; }
+__stderrError  () { printf '\033[31m%s %s\033[0m\n' "$(date +%Y-%m-%dT%H:%M:%S%z) [  error]" "$*" 1>&2; }
+__stderrOK     () { printf '\033[32m%s %s\033[0m\n' "$(date +%Y-%m-%dT%H:%M:%S%z) [     ok]" "$*" 1>&2; }
+__stderrWarn   () { printf '\033[33m%s %s\033[0m\n' "$(date +%Y-%m-%dT%H:%M:%S%z) [warning]" "$*" 1>&2; }
+__stderrInfo   () { printf '\033[34m%s %s\033[0m\n' "$(date +%Y-%m-%dT%H:%M:%S%z) [   info]" "$*" 1>&2; }
+__displayContext () {
+  printf '\033[34m%s %s \033[01m%s\033[0m\n' "$(date +%Y-%m-%dT%H:%M:%S%z) [   info]" "current-context:" "$("${kubectl_bin:?}" config current-context)" 1>&2
+}
 __confirmContext () {
-  printf '\033[33m%s %s \033[1m%s\033[0m\n' "$(date +%Y-%m-%dT%H:%M:%S%z) [warning]" "current-context:" "$("${KUBECTL_BIN:?}" config current-context)" 1>&2
   printf '\033[33m%s %s\033[0m'   "$(date +%Y-%m-%dT%H:%M:%S%z) [warning]" "press ENTER KEY to continue... " 1>&2
   read -r;
 }
-
-# var
-REPOSITORY_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || true)
-SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
-if [[ -w "$REPOSITORY_ROOT" ]]; then
-  BASE_DIR="${REPOSITORY_ROOT:?}"
-elif [[ -w "$SCRIPT_DIR" ]]; then
-  BASE_DIR="${SCRIPT_DIR:?}"
-else
-  BASE_DIR="$HOME/.local"
-fi
-
-# kubectl
-KUBECTL_BINARY_FILE=$( { { echo "$PATH" | tr : "\n" | xargs -I@ sh -c "file \"@/kubectl\"" 2>/dev/null; } || true; } | grep -Ev "No such file or directory| text" | head -n 1 | cut -d: -f1 )
-if [[ -x $KUBECTL_BINARY_FILE ]]; then
-  KUBECTL_BIN="${KUBECTL_BINARY_FILE:?}"
-else
-  KUBECTL_BIN="${BASE_DIR:?}/.local/bin/kubectl"
-fi
-
-# setup
-if [[ ! -f ${KUBECTL_BIN:?} ]]; then
-  # if exists and not file, meke backup
-  if [[ -e ${KUBECTL_BIN:?} ]]; then
-    mv -v "${KUBECTL_BIN:?}" ".${KUBECTL_BIN:?}.backup"
+__setupKubectl () {
+  if [[ ! -f ${kubectl_bin:?} ]]; then
+    # if exists and not file, meke backup
+    if [[ -e ${kubectl_bin:?} ]]; then
+      mv -v "${kubectl_bin:?}" ".${kubectl_bin:?}.backup"
+    fi
+    VERSION=$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)
+    SYSTEM=$(uname -s | tr '[:upper:]' '[:lower:]')
+    mkdir -p "$(dirname "${kubectl_bin}")"
+    cmd="curl -fLR https://storage.googleapis.com/kubernetes-release/release/${VERSION:?}/bin/${SYSTEM:?}/amd64/kubectl -o ${kubectl_bin:?}"
+    __stderrInfo "Run: ${cmd:?}" && bash -c "curl -o ${kubectl_bin:?} -fLR https://storage.googleapis.com/kubernetes-release/release/${VERSION:?}/bin/${SYSTEM:?}/amd64/kubectl"
   fi
-  VERSION=$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)
-  SYSTEM=$(uname -s | tr '[:upper:]' '[:lower:]')
-  mkdir -p "$(dirname "${KUBECTL_BIN}")"
-  cmd="curl -fLR https://storage.googleapis.com/kubernetes-release/release/${VERSION:?}/bin/${SYSTEM:?}/amd64/kubectl -o ${KUBECTL_BIN:?}"
-  __stderrInfo "Run: ${cmd:?}" && bash -c "curl -o ${KUBECTL_BIN:?} -fLR https://storage.googleapis.com/kubernetes-release/release/${VERSION:?}/bin/${SYSTEM:?}/amd64/kubectl"
-fi
-if [[ ! -x ${KUBECTL_BIN:?} ]]; then
-  cmd="chmod +x ${KUBECTL_BIN:?}"
-  __stderrInfo "Run: ${cmd:?}" && bash -c "${cmd:?}"
-fi
-
-# main
-if [[ $KUBECTL_CONTEXT ]] && ! { echo "$*" | grep -q -- --context; }; then
-  __stderrInfo "Run: kubectl --context=${KUBECTL_CONTEXT:?} $*"
-  "${KUBECTL_BIN:?}" --context="${KUBECTL_CONTEXT:?}" "$@"
-else
-  # if read only command, no confirm
-  if [[ $# -le 1 ]] || {
-    echo " $* " | grep -Eq -- ' -h | --help | --dry-run '
-  } || {
-    echo " $* " | grep -Eq ' api-resources | api-version | cluster-info | completion | config | describe | diff | explain | get | logs | top | version | wait '
-  }; then
-    "${KUBECTL_BIN:?}" "$@";
-    exit $?;
-  fi;
-  # confirm current-context
-  if ! __confirmContext; then
-    exit 1
+  if [[ ! -x ${kubectl_bin:?} ]]; then
+    cmd="chmod +x ${kubectl_bin:?}"
+    __stderrInfo "Run: ${cmd:?}" && bash -c "${cmd:?}"
   fi
-  # exec
-  "${KUBECTL_BIN:?}" "$@"
-fi
+}
+
+__main () {
+  # var
+  if [[ -w "$repository_root" ]]; then
+    base_dir="${repository_root:?}"
+  elif [[ -w "$script_dir" ]]; then
+    base_dir="${script_dir:?}"
+  else
+    base_dir="$HOME"
+  fi
+  # kubectl
+  kubectl_bin=$(
+    echo "$PATH" | tr : "\n" |
+      # check existence
+      xargs -I@ sh -c "file \"@/kubectl\"" 2>/dev/null | grep "^/.*: .* executable" |
+      # avoid to infinite loop
+      grep -v "^${script_fullpath:?}" |
+      # first file fullpath in PATH
+      head -n 1 | cut -d: -f1
+  ) || true
+  if [[ ! -x $kubectl_bin ]] || [[ ! -f $kubectl_bin ]]; then
+    kubectl_bin="${base_dir:?}/.local/bin/kubectl"
+    __setupKubectl
+  fi
+  # main
+  if [[ $KUBECTL_CONTEXT ]] && ! { echo "$*" | grep -q -- --context; }; then
+    __stderrInfo "Run: kubectl --context=${KUBECTL_CONTEXT:?} $*"
+    "${kubectl_bin:?}" --context="${KUBECTL_CONTEXT:?}" "$@"
+  else
+    __displayContext
+    # If NOT read only command,
+    if [[ ! $# -le 1 ]] &&
+      ! { echo " $* " | grep -Eq -- ' -h | --help | --dry-run '; } &&
+      ! { echo " $* " | grep -Eq ' api-resources | api-version | cluster-info | completion | config | describe | diff | explain | get | logs | top | version | wait '; }; then
+      # confirm current-context
+      if ! __confirmContext; then
+        exit 1
+      fi
+    fi;
+    # run
+    "${kubectl_bin:?}" "$@"
+  fi
+}
+
+# entrypoint
+__main "$@"
