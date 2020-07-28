@@ -79,8 +79,8 @@ __main () {
   # kubectl
   kubectl_bin=$(
     echo "$PATH" | tr : "\n" |
-      # check existence
-      xargs -I@ sh -c "file \"@/kubectl\"" 2>/dev/null | grep "^/.*: .* executable" |
+      # check binary command existence
+      xargs -I@ sh -c "grep -q \"[^[:print:][:blank:]]\" \"@/kubectl\" && echo \"@/kubectl\"" 2>/dev/null |
       # avoid to infinite loop
       grep -v "^${script_fullpath:?}" |
       # first file fullpath in PATH
