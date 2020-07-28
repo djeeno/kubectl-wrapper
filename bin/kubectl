@@ -43,7 +43,7 @@ __stderrOK     () { printf '\033[32m%s %s\033[0m\n' "$(date +%Y-%m-%dT%H:%M:%S%z
 __stderrWarn   () { printf '\033[33m%s %s\033[0m\n' "$(date +%Y-%m-%dT%H:%M:%S%z) [warning]" "$*" 1>&2; }
 __stderrInfo   () { printf '\033[34m%s %s\033[0m\n' "$(date +%Y-%m-%dT%H:%M:%S%z) [   info]" "$*" 1>&2; }
 __displayContext () {
-  printf '\033[34m%s %s \033[01m%s\033[0m\n' "$(date +%Y-%m-%dT%H:%M:%S%z) [   info]" "current-context:" "$("${kubectl_bin:?}" config current-context)" 1>&2
+  printf '\033[34m%s %s \033[01m%s\033[0m\n' "$(date +%Y-%m-%dT%H:%M:%S%z) [   info]" "current-context:" "$("${kubectl_bin:?}" config current-context 2>/dev/null || echo current-context is not set)" 1>&2
 }
 __confirmContext () {
   printf '\033[33m%s %s\033[0m'   "$(date +%Y-%m-%dT%H:%M:%S%z) [warning]" "press ENTER KEY to continue... " 1>&2
