@@ -91,7 +91,12 @@ __main () {
     __setupKubectl
   fi
   # main
-  if [[ $KUBECTL_CONTEXT ]] && ! { echo "$*" | grep -q -- --context; }; then
+  if echo "$*" | grep -q -- --context; then
+    # shellcheck disable=SC2001
+    [[ $KUBECTL_CONTEXT ]] || KUBECTL_CONTEXT=$(echo "$*" | sed "s/\(.* \)*--context.\([^[:blank:]]*\)\( .*\)*/\2/g")
+    __stderrInfo "Run: kubectl $*"
+    "${kubectl_bin:?}" "$@"
+  elif [[ $KUBECTL_CONTEXT ]]; then
     __stderrInfo "Run: kubectl --context=${KUBECTL_CONTEXT:?} $*"
     "${kubectl_bin:?}" --context="${KUBECTL_CONTEXT:?}" "$@"
   else
