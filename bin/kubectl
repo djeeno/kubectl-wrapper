@@ -90,6 +90,8 @@ __main () {
     kubectl_bin="${base_dir:?}/.local/bin/kubectl"
     __setupKubectl
   fi
+  # KUBECTL_EXTERNAL_DIFF
+  export KUBECTL_EXTERNAL_DIFF="${KUBECTL_EXTERNAL_DIFF:-$(command -v cdiff | grep ^/)}"
   # main
   if echo "$*" | grep -q -- "--context[[:space:]=]"; then
     # shellcheck disable=SC2001
