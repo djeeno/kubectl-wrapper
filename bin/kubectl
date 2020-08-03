@@ -37,11 +37,11 @@ script_fullpath="${script_dir:?}/$(basename "$0")"
 
 
 # func
-__stderrNotice () { printf '\033[01m%s %s\033[0m\n' "$(date +%Y-%m-%dT%H:%M:%S%z) [ notice]" "$*" 1>&2; }
-__stderrError  () { printf '\033[31m%s %s\033[0m\n' "$(date +%Y-%m-%dT%H:%M:%S%z) [  error]" "$*" 1>&2; }
-__stderrOK     () { printf '\033[32m%s %s\033[0m\n' "$(date +%Y-%m-%dT%H:%M:%S%z) [     ok]" "$*" 1>&2; }
-__stderrWarn   () { printf '\033[33m%s %s\033[0m\n' "$(date +%Y-%m-%dT%H:%M:%S%z) [warning]" "$*" 1>&2; }
-__stderrInfo   () { printf '\033[34m%s %s\033[0m\n' "$(date +%Y-%m-%dT%H:%M:%S%z) [   info]" "$*" 1>&2; }
+__stderrNotice () {(__tty=$(if tty -s; then echo 0; fi); printf "${__tty:+\033[01m}%s %s${__tty:+\033[0m}\n" "$(date +%Y-%m-%dT%H:%M:%S%z) [ notice]" "$*" 1>&2)}
+__stderrError  () {(__tty=$(if tty -s; then echo 0; fi); printf "${__tty:+\033[31m}%s %s${__tty:+\033[0m}\n" "$(date +%Y-%m-%dT%H:%M:%S%z) [  error]" "$*" 1>&2)}
+__stderrOK     () {(__tty=$(if tty -s; then echo 0; fi); printf "${__tty:+\033[32m}%s %s${__tty:+\033[0m}\n" "$(date +%Y-%m-%dT%H:%M:%S%z) [     ok]" "$*" 1>&2)}
+__stderrWarn   () {(__tty=$(if tty -s; then echo 0; fi); printf "${__tty:+\033[33m}%s %s${__tty:+\033[0m}\n" "$(date +%Y-%m-%dT%H:%M:%S%z) [warning]" "$*" 1>&2)}
+__stderrInfo   () {(__tty=$(if tty -s; then echo 0; fi); printf "${__tty:+\033[34m}%s %s${__tty:+\033[0m}\n" "$(date +%Y-%m-%dT%H:%M:%S%z) [   info]" "$*" 1>&2)}
 __displayContext () {
   printf '\033[34m%s %s \033[01m%s\033[0m\n' "$(date +%Y-%m-%dT%H:%M:%S%z) [   info]" "current-context:" "$("${kubectl_bin:?}" config current-context 2>/dev/null || echo current-context is not set)" 1>&2
 }
