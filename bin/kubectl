@@ -78,7 +78,7 @@ __updateSelf () {
 
 __main () {
   # subcommands
-  if [[ $1 = update-self ]]; then __updateSelf; fi
+  if [[ $1 = self-update ]]; then __updateSelf; fi
   # kubectl
   local kubectl_bin
   kubectl_bin=$(
