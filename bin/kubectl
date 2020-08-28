@@ -31,52 +31,47 @@ set -Ee -o pipefail
 
 
 # var (common)
-repository_root=$(git rev-parse --show-toplevel 2>/dev/null || true)
+httpGet="$( { command -v curl 1>/dev/null && printf "curl -fLRSs"; } || { command -v wget 1>/dev/null && printf "wget -O- -q"; } )"; export httpGet
 script_dir=$(cd "$(dirname "$0")" && pwd)
 script_fullpath="${script_dir:?}/$(basename "$0")"
 
 
 # func
+__stderrDebug  () {(__tty=$(if tty -s; then echo 0; fi); [[ $DEBUG != true ]] || printf "%s %s\n" "$(date +%Y-%m-%dT%H:%M:%S%z) [  debug]" "$*" 1>&2)}
 __stderrNotice () {(__tty=$(if tty -s; then echo 0; fi); printf "${__tty:+\033[01m}%s %s${__tty:+\033[0m}\n" "$(date +%Y-%m-%dT%H:%M:%S%z) [ notice]" "$*" 1>&2)}
 __stderrError  () {(__tty=$(if tty -s; then echo 0; fi); printf "${__tty:+\033[31m}%s %s${__tty:+\033[0m}\n" "$(date +%Y-%m-%dT%H:%M:%S%z) [  error]" "$*" 1>&2)}
 __stderrOK     () {(__tty=$(if tty -s; then echo 0; fi); printf "${__tty:+\033[32m}%s %s${__tty:+\033[0m}\n" "$(date +%Y-%m-%dT%H:%M:%S%z) [     ok]" "$*" 1>&2)}
 __stderrWarn   () {(__tty=$(if tty -s; then echo 0; fi); printf "${__tty:+\033[33m}%s %s${__tty:+\033[0m}\n" "$(date +%Y-%m-%dT%H:%M:%S%z) [warning]" "$*" 1>&2)}
 __stderrInfo   () {(__tty=$(if tty -s; then echo 0; fi); printf "${__tty:+\033[34m}%s %s${__tty:+\033[0m}\n" "$(date +%Y-%m-%dT%H:%M:%S%z) [   info]" "$*" 1>&2)}
 __displayContext () {
-  printf '\033[34m%s %s \033[01m%s\033[0m\n' "$(date +%Y-%m-%dT%H:%M:%S%z) [   info]" "current-context:" "$("${kubectl_bin:?}" config current-context 2>/dev/null || echo current-context is not set)" 1>&2
+  printf '\033[34m%s %s\033[0m \033[01m%s\033[0m\n' "$(date +%Y-%m-%dT%H:%M:%S%z) [   info]" "kubectl config current-context =>" "$("${kubectl_bin:?}" config current-context 2>/dev/null || echo current-context is not set)" 1>&2
 }
 __confirmContext () {
   printf '\033[33m%s %s\033[0m'   "$(date +%Y-%m-%dT%H:%M:%S%z) [warning]" "press ENTER KEY to continue... " 1>&2
   read -r;
 }
 __setupKubectl () {
+  local kubectl_bin="${1:?}"
   if [[ ! -f ${kubectl_bin:?} ]]; then
     # if exists and not file, meke backup
     if [[ -e ${kubectl_bin:?} ]]; then
       mv -v "${kubectl_bin:?}" ".${kubectl_bin:?}.backup"
     fi
-    VERSION=$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)
+    VERSION=$(${httpGet:?"curl or wget are required"} https://storage.googleapis.com/kubernetes-release/release/stable.txt)
     SYSTEM=$(uname -s | tr '[:upper:]' '[:lower:]')
     mkdir -p "$(dirname "${kubectl_bin}")"
-    cmd="curl -fLR https://storage.googleapis.com/kubernetes-release/release/${VERSION:?}/bin/${SYSTEM:?}/amd64/kubectl -o ${kubectl_bin:?}"
-    __stderrInfo "Run: ${cmd:?}" && bash -c "curl -o ${kubectl_bin:?} -fLR https://storage.googleapis.com/kubernetes-release/release/${VERSION:?}/bin/${SYSTEM:?}/amd64/kubectl"
+    cmd="${httpGet:?"curl or wget are required"} https://storage.googleapis.com/kubernetes-release/release/${VERSION:?}/bin/${SYSTEM:?}/amd64/kubectl >${kubectl_bin:?}"
+    __stderrInfo "RUN: ${cmd:?}" && if [[ -w ${kubectl_bin:?} ]] || { [[ -w $(dirname "${kubectl_bin:?}") ]] && [[ ! -e ${kubectl_bin:?} ]]; }; then bash -cx "${cmd:?}"; else sudo -u root bash -cx "${cmd:?}"; fi
   fi
   if [[ ! -x ${kubectl_bin:?} ]]; then
     cmd="chmod +x ${kubectl_bin:?}"
-    __stderrInfo "Run: ${cmd:?}" && bash -c "${cmd:?}"
+    __stderrInfo "RUN: ${cmd:?}" && if [[ -w ${kubectl_bin:?} ]] || { [[ -w $(dirname "${kubectl_bin:?}") ]] && [[ ! -e ${kubectl_bin:?} ]]; }; then bash -cx "${cmd:?}"; else sudo -u root bash -cx "${cmd:?}"; fi
   fi
 }
 
 __main () {
-  # var
-  if [[ -w "$repository_root" ]]; then
-    base_dir="${repository_root:?}"
-  elif [[ -w "$script_dir" ]]; then
-    base_dir="${script_dir:?}"
-  else
-    base_dir="$HOME"
-  fi
   # kubectl
+  local kubectl_bin
   kubectl_bin=$(
     echo "$PATH" | tr : "\n" |
       # check binary command existence
@@ -86,19 +81,20 @@ __main () {
       # first file fullpath in PATH
       head -n 1 | cut -d: -f1
   ) || true
+  __stderrDebug "kubectl in PATH (kubectl_bin): $kubectl_bin"
   if [[ ! -x $kubectl_bin ]] || [[ ! -f $kubectl_bin ]]; then
-    kubectl_bin="${base_dir:?}/.local/bin/kubectl"
-    __setupKubectl
+    kubectl_bin="${HOME:?}/bin/kubectl"
+    __setupKubectl "${kubectl_bin:?}"
   fi
   # KUBECTL_EXTERNAL_DIFF
-  export KUBECTL_EXTERNAL_DIFF="${KUBECTL_EXTERNAL_DIFF:-$(command -v cdiff | grep ^/)}"
+  export KUBECTL_EXTERNAL_DIFF="${KUBECTL_EXTERNAL_DIFF:-$(command -v cdiff)}"
   # main
   if echo "$*" | grep -q -- "--context[[:space:]=]"; then
     # shellcheck disable=SC2001
-    __stderrInfo "Run: kubectl $*"
+    __stderrInfo "RUN: kubectl $*"
     "${kubectl_bin:?}" "$@"
   elif [[ $KUBECTL_CONTEXT ]]; then
-    __stderrInfo "Run: kubectl --context=${KUBECTL_CONTEXT:?} $*"
+    __stderrInfo "RUN: kubectl --context=${KUBECTL_CONTEXT:?} $*"
     "${kubectl_bin:?}" --context="${KUBECTL_CONTEXT:?}" "$@"
   else
     __displayContext
