@@ -13,7 +13,7 @@ wget -c https://github.com/djeeno/kubectl-wrapper/releases/latest/download/kubec
 
 ## Features
 
-### context switching by environment variables.
+### context switching by environment variables `KUBECTL_CONTEXT`
 ```console
 $ export KUBECTL_CONTEXT=gke_myproject_asia-northeast1_dev001
 $ kubectl get pods
