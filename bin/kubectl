@@ -100,10 +100,10 @@ __main () {
   # main
   if echo "$*" | grep -q -- "--context[[:space:]=]"; then
     # shellcheck disable=SC2001
-    __stderrInfo "RUN: kubectl $*"
+    __stderrInfo "RUN: ${kubectl_bin:?} $*"
     "${kubectl_bin:?}" "$@"
   elif [[ $KUBECTL_CONTEXT ]]; then
-    __stderrInfo "RUN: kubectl --context=${KUBECTL_CONTEXT:?} $*"
+    __stderrInfo "RUN: ${kubectl_bin:?} --context=${KUBECTL_CONTEXT:?} $*"
     "${kubectl_bin:?}" --context="${KUBECTL_CONTEXT:?}" "$@"
   else
     __displayContext
