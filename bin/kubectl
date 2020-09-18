@@ -36,6 +36,7 @@ script_dir=$(cd "$(dirname "$0")" && pwd)
 script_fullpath="${script_dir:?}/$(basename "$0")"
 
 
+
 # func
 __stderrDebug  () {(__tty=$(if tty -s; then echo 0; fi); [[ $DEBUG != true ]] || printf "%s %s\n" "$(date +%Y-%m-%dT%H:%M:%S%z) [  debug]" "$*" 1>&2)}
 __stderrNotice () {(__tty=$(if tty -s; then echo 0; fi); printf "${__tty:+\033[01m}%s %s${__tty:+\033[0m}\n" "$(date +%Y-%m-%dT%H:%M:%S%z) [ notice]" "$*" 1>&2)}
@@ -81,6 +82,9 @@ __updateSelf () {
   exit 0
 }
 
+
+
+# main
 __main () {
   # subcommands
   if [[ $1 = self-update ]]; then __updateSelf; fi
@@ -125,6 +129,8 @@ __main () {
     "${kubectl_bin:?}" "$@"
   fi
 }
+
+
 
 # entrypoint
 __main "$@"
