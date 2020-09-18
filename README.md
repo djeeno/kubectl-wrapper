@@ -33,7 +33,7 @@ api-ac6cf79d65-rkt7x     1/1     Running   0          30m
 ```
 
 ### Warning for target context
-If not set `KUBECTL_CONTEXT` or `--context` option, display and confirm current-context.
+If not set `--context` option or `KUBECTL_CONTEXT`, display and confirm current-context.
 
 ```console
 $ kubectl apply -f sample.yaml
