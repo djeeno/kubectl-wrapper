@@ -23,9 +23,15 @@ set -Ee -o pipefail
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
+# ---
 #
-# Installation
-#   sudo bash -cx "curl -fLR https://raw.githubusercontent.com/djeeno/kubectl-wrapper/master/bin/kubectl -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl"
+# Install
+#
+#   # for curl
+#   sudo bash -cx "curl -LR https://github.com/djeeno/kubectl-wrapper/releases/latest/download/kubectl -o /usr/local/bin/kubectl && chmod -v +x /usr/local/bin/kubectl"
+#
+#   # for wget
+#   sudo bash -cx "wget -c https://github.com/djeeno/kubectl-wrapper/releases/latest/download/kubectl -O /usr/local/bin/kubectl && chmod -v +x /usr/local/bin/kubectl"
 #
 
 

@@ -5,10 +5,10 @@ kubectl-wrapper displays the current-context and prompts for user confirmation w
 
 ```bash
 # for curl
-curl -LR https://github.com/djeeno/kubectl-wrapper/releases/latest/download/kubectl -o /usr/local/bin/kubectl ; chmod -v +x /usr/local/bin/kubectl
+sudo bash -cx "curl -LR https://github.com/djeeno/kubectl-wrapper/releases/latest/download/kubectl -o /usr/local/bin/kubectl && chmod -v +x /usr/local/bin/kubectl"
 
 # for wget
-wget -c https://github.com/djeeno/kubectl-wrapper/releases/latest/download/kubectl -O /usr/local/bin/kubectl ; chmod -v +x /usr/local/bin/kubectl
+sudo bash -cx "wget -c https://github.com/djeeno/kubectl-wrapper/releases/latest/download/kubectl -O /usr/local/bin/kubectl && chmod -v +x /usr/local/bin/kubectl"
 ```
 
 ## Features
