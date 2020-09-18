@@ -53,7 +53,12 @@ __confirmContext () {
 __setupKubectl () {
   local kubectl_bin="${1:?}"
   if [[ ! -f ${kubectl_bin:?} ]]; then
-    # if exists and not file, meke backup
+    # If not amd64,
+    if [[ $(uname -m) != x86_64 ]]; then
+      __stderrError "Installation kubectl for architecture $(uname -m) is not supported"
+      return 1
+    fi
+    # If exists and not file, meke backup
     if [[ -e ${kubectl_bin:?} ]]; then
       mv -v "${kubectl_bin:?}" ".${kubectl_bin:?}.backup"
     fi
