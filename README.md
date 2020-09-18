@@ -13,7 +13,8 @@ wget -c https://github.com/djeeno/kubectl-wrapper/releases/latest/download/kubec
 
 ## Features
 
-### Switching context by environment variables `KUBECTL_CONTEXT`
+### Switching context by environment variable `KUBECTL_CONTEXT`
+
 ```console
 $ export KUBECTL_CONTEXT=gke_myproject_asia-northeast1_dev001
 $ kubectl get pods
@@ -33,7 +34,7 @@ api-ac6cf79d65-rkt7x     1/1     Running   0          30m
 ```
 
 ### Warning for target context
-If not set `--context` option or `KUBECTL_CONTEXT`, display and confirm current-context.
+If `--context` option or environment variable `KUBECTL_CONTEXT` is not set, display current-context and prompts the user for confirmation.  
 
 ```console
 $ kubectl apply -f sample.yaml
