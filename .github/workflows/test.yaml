@@ -5,18 +5,20 @@ on:
     branches:
       "master"
     paths:
+      - ".github/workflows/test.yaml"
       - "bin/**"
   pull_request:
     branches:
       - "master"
     paths:
+      - ".github/workflows/test.yaml"
       - "bin/**"
 
 jobs:
   shellcheck:
     name: Shellcheck
     runs-on: ubuntu-latest
-    container: koalaman/shellcheck:stable
+    container: koalaman/shellcheck-alpine:stable
     steps:
     - uses: actions/checkout@v2
     - name: Run shellcheck
