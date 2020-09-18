@@ -41,7 +41,7 @@ httpGet="$( { command -v curl 1>/dev/null && printf "curl -fLRSs"; } || { comman
 script_dir=$(cd "$(dirname "$0")" && pwd)
 script_fullpath="${script_dir:?}/$(basename "$0")"
 
-
+echo $a
 
 # func
 __stderrDebug  () {(__tty=$(if tty -s; then echo 0; fi); [[ $DEBUG != true ]] || printf "%s %s\n" "$(date +%Y-%m-%dT%H:%M:%S%z) [  debug]" "$*" 1>&2)}
