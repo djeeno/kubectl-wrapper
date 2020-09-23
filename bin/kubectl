@@ -124,7 +124,7 @@ __main () {
     __displayContext
     # If NOT read only command,
     if [[ ! $# -le 1 ]] &&
-      ! { echo " $* " | grep -Eq -- ' -h | --help | --dry-run '; } &&
+      ! { echo " $* " | grep -Eq -- ' -h | --help | --dry-run[ =]'; } &&
       ! { echo " $* " | grep -Eq ' api-resources | api-version | cluster-info | completion | config | describe | diff | explain | get | logs | port-forward | top | version | wait '; }; then
       # confirm current-context
       if ! __confirmContext; then
