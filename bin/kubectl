@@ -116,10 +116,10 @@ __main () {
   if echo "$*" | grep -q -- "--context[[:space:]=]"; then
     # shellcheck disable=SC2001
     __stderrInfo "RUN: ${kubectl_bin:?} $*"
-    "${kubectl_bin:?}" "$@"
+    "${kubectl_bin:?}" "$@" </dev/stdin
   elif [[ $KUBECTL_CONTEXT ]]; then
     __stderrInfo "RUN: ${kubectl_bin:?} --context=${KUBECTL_CONTEXT:?} $*"
-    "${kubectl_bin:?}" --context="${KUBECTL_CONTEXT:?}" "$@"
+    "${kubectl_bin:?}" --context="${KUBECTL_CONTEXT:?}" "$@" </dev/stdin
   else
     __displayContext
     # If NOT read only command,
@@ -132,7 +132,7 @@ __main () {
       fi
     fi;
     # run
-    "${kubectl_bin:?}" "$@"
+    "${kubectl_bin:?}" "$@" </dev/stdin
   fi
 }
 
