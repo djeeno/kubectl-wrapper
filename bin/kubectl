@@ -34,27 +34,36 @@ set -Ee -o pipefail
 #   sudo bash -cx "wget -c https://github.com/djeeno/kubectl-wrapper/releases/latest/download/kubectl -O /usr/local/bin/kubectl && chmod -v +x /usr/local/bin/kubectl"
 #
 
-
-
 # var (common)
 httpGet="$( { command -v curl 1>/dev/null && printf "curl -fLRSs"; } || { command -v wget 1>/dev/null && printf "wget -O- -q"; } )"; export httpGet
 script_dir=$(cd "$(dirname "$0")" && pwd)
 script_fullpath="${script_dir:?}/$(basename "$0")"
 
-
+# export for func
+[ "${LOG_COLOR:-}" = false ] || export enablecolor=true
+export  pipe_debug="awk \"{print \\\"${enablecolor:+\\\\033[0;34m}\$(date +%Y-%m-%dT%H:%M:%S%z) [ debug] \\\"\\\$0\\\"${enablecolor:+\\\\033[0m}\\\"}\" /dev/stdin"
+export   pipe_info="awk \"{print \\\"${enablecolor:+\\\\033[0;32m}\$(date +%Y-%m-%dT%H:%M:%S%z) [  info] \\\"\\\$0\\\"${enablecolor:+\\\\033[0m}\\\"}\" /dev/stdin"
+export pipe_notice="awk \"{print \\\"${enablecolor:+\\\\033[0;36m}\$(date +%Y-%m-%dT%H:%M:%S%z) [notice] \\\"\\\$0\\\"${enablecolor:+\\\\033[0m}\\\"}\" /dev/stdin"
+export   pipe_warn="awk \"{print \\\"${enablecolor:+\\\\033[0;33m}\$(date +%Y-%m-%dT%H:%M:%S%z) [  warn] \\\"\\\$0\\\"${enablecolor:+\\\\033[0m}\\\"}\" /dev/stdin"
+export  pipe_error="awk \"{print \\\"${enablecolor:+\\\\033[0;31m}\$(date +%Y-%m-%dT%H:%M:%S%z) [ error] \\\"\\\$0\\\"${enablecolor:+\\\\033[0m}\\\"}\" /dev/stdin"
+export   pipe_crit="awk \"{print \\\"${enablecolor:+\\\\033[1;31m}\$(date +%Y-%m-%dT%H:%M:%S%z) [  crit] \\\"\\\$0\\\"${enablecolor:+\\\\033[0m}\\\"}\" /dev/stdin"
 
 # func
-export  pipe_debug="exec awk \"{print \\\"\\\\033[00m\$(date +%Y-%m-%dT%H:%M:%S%z) [ debug] \\\"\\\$0\\\"\\\\033[0m\\\"}\" /dev/stdin" &&  debugln () { [[ $DEBUG != true ]] || echo "${*:?"log content"}" | sh -c "${pipe_debug:?}"  1>&2; }
-export   pipe_info="exec awk \"{print \\\"\\\\033[34m\$(date +%Y-%m-%dT%H:%M:%S%z) [  info] \\\"\\\$0\\\"\\\\033[0m\\\"}\" /dev/stdin" &&   infoln () { echo "${*:?"log content"}" | sh -c "${pipe_info:?}"   1>&2; }
-export     pipe_ok="exec awk \"{print \\\"\\\\033[32m\$(date +%Y-%m-%dT%H:%M:%S%z) [    ok] \\\"\\\$0\\\"\\\\033[0m\\\"}\" /dev/stdin" &&     okln () { echo "${*:?"log content"}" | sh -c "${pipe_ok:?}"     1>&2; }
-export pipe_notice="exec awk \"{print \\\"\\\\033[01m\$(date +%Y-%m-%dT%H:%M:%S%z) [notice] \\\"\\\$0\\\"\\\\033[0m\\\"}\" /dev/stdin" && noticeln () { echo "${*:?"log content"}" | sh -c "${pipe_notice:?}" 1>&2; }
-export   pipe_warn="exec awk \"{print \\\"\\\\033[33m\$(date +%Y-%m-%dT%H:%M:%S%z) [  warn] \\\"\\\$0\\\"\\\\033[0m\\\"}\" /dev/stdin" &&   warnln () { echo "${*:?"log content"}" | sh -c "${pipe_warn:?}"   1>&2; }
-export  pipe_error="exec awk \"{print \\\"\\\\033[31m\$(date +%Y-%m-%dT%H:%M:%S%z) [ error] \\\"\\\$0\\\"\\\\033[0m\\\"}\" /dev/stdin" &&  errorln () { echo "${*:?"log content"}" | sh -c "${pipe_error:?}"  1>&2; }
+export severity="${LOG_SEVERITY:--1}"
+Debugln  () { [ "${severity:--1}" -gt 100 ] 2>/dev/null || echo "$*" | bash -c "${pipe_debug:?}"  1>&2; }
+Infoln   () { [ "${severity:--1}" -gt 200 ] 2>/dev/null || echo "$*" | bash -c "${pipe_info:?}"   1>&2; }
+Noticeln () { [ "${severity:--1}" -gt 300 ] 2>/dev/null || echo "$*" | bash -c "${pipe_notice:?}" 1>&2; }
+Warnln   () { [ "${severity:--1}" -gt 400 ] 2>/dev/null || echo "$*" | bash -c "${pipe_warn:?}"   1>&2; }
+Errorln  () { [ "${severity:--1}" -gt 500 ] 2>/dev/null || echo "$*" | bash -c "${pipe_error:?}"  1>&2; }
+Critln   () { [ "${severity:--1}" -gt 600 ] 2>/dev/null || echo "$*" | bash -c "${pipe_crit:?}"   1>&2; }
+Run      () { Debugln "$ $(s=" "; i=1; for a in "$@"; do if [ $i = $# ]; then s=""; fi; if echo "$a" | grep -Eq "[[:blank:]]"; then printf "'%s'$s" "$a"; else printf "%s$s" "$a"; fi; done;)"; "$@"; }
+Catch    () { err=$?; Errorln "exit ${err-}"; return ${err-}; } && trap Catch ERR
+
 __displayContext () {
-  printf '\033[34m%s %s\033[0m \033[01m%s\033[0m\n' "$(date +%Y-%m-%dT%H:%M:%S%z) [  info]" "${kubectl_bin:?} config current-context:" "$("${kubectl_bin:?}" config current-context 2>/dev/null || echo current-context is not set; exit 1)" 1>&2
+  Noticeln "${kubectl_bin:?} config current-context: $("${kubectl_bin:?}" config current-context 2>/dev/null || echo current-context is not set; exit 1)"
 }
 __confirmContext () {
-  printf '\033[33m%s %s\033[0m'   "$(date +%Y-%m-%dT%H:%M:%S%z) [  warn]" "press ENTER KEY to continue... " 1>&2
+  Warnln "press ENTER KEY to continue..."
   read -r;
 }
 __setupKubectl () {
@@ -62,7 +71,7 @@ __setupKubectl () {
   if [[ ! -f ${kubectl_bin:?} ]]; then
     # If not amd64,
     if [[ $(uname -m) != x86_64 ]]; then
-      errorln "Installation kubectl for architecture $(uname -m) is not supported"
+      Errorln "Installation kubectl for architecture $(uname -m) is not supported"
       return 1
     fi
     # If exists and not file, meke backup
@@ -71,20 +80,21 @@ __setupKubectl () {
     fi
     VERSION=$(${httpGet:?"curl or wget are required"} https://storage.googleapis.com/kubernetes-release/release/stable.txt)
     SYSTEM=$(uname -s | tr '[:upper:]' '[:lower:]')
+    URL="https://storage.googleapis.com/kubernetes-release/release/${VERSION:?}/bin/${SYSTEM:?}/amd64/kubectl"
     mkdir -p "$(dirname "${kubectl_bin}")"
-    cmd="${httpGet:?"curl or wget are required"} https://storage.googleapis.com/kubernetes-release/release/${VERSION:?}/bin/${SYSTEM:?}/amd64/kubectl >${kubectl_bin:?}"
-    infoln "RUN: ${cmd:?}" && if [[ -w ${kubectl_bin:?} ]] || { [[ -w $(dirname "${kubectl_bin:?}") ]] && [[ ! -e ${kubectl_bin:?} ]]; }; then bash -c "${cmd:?}"; else sudo -u root bash -c "${cmd:?}"; fi
+    cmd="${httpGet:?"curl or wget are required"} ${URL:?} >${kubectl_bin:?}"
+    Debugln "RUN: ${cmd:?}" && if [[ -w ${kubectl_bin:?} ]] || { [[ -w $(dirname "${kubectl_bin:?}") ]] && [[ ! -e ${kubectl_bin:?} ]]; }; then bash -c "${cmd:?}"; else sudo -u root bash -c "${cmd:?}"; fi
   fi
   if [[ ! -x ${kubectl_bin:?} ]]; then
     cmd="chmod +x ${kubectl_bin:?}"
-    infoln "RUN: ${cmd:?}" && if [[ -w ${kubectl_bin:?} ]] || { [[ -w $(dirname "${kubectl_bin:?}") ]] && [[ ! -e ${kubectl_bin:?} ]]; }; then bash -c "${cmd:?}"; else sudo -u root bash -c "${cmd:?}"; fi
+    Debugln "RUN: ${cmd:?}" && if [[ -w ${kubectl_bin:?} ]] || { [[ -w $(dirname "${kubectl_bin:?}") ]] && [[ ! -e ${kubectl_bin:?} ]]; }; then bash -c "${cmd:?}"; else sudo -u root bash -c "${cmd:?}"; fi
   fi
 }
-__updateSelf () {
-  infoln "Update self."
+__selfUpdate () {
+  Infoln "self update"
   cmd="${httpGet:?"curl or wget are required"} https://github.com/djeeno/kubectl-wrapper/releases/latest/download/kubectl >\"$0\"; chmod -v +x \"$0\""
-  infoln "RUN: ${cmd:?}" && if [[ -w $0 ]] || { [[ -w $(dirname "$0") ]] && [[ ! -e $0 ]]; }; then bash -c "${cmd:?}"; else sudo -u root bash -c "${cmd:?}"; fi
-  infoln "Updated."
+  Debugln "RUN: ${cmd:?}" && if [[ -w $0 ]] || { [[ -w $(dirname "$0") ]] && [[ ! -e $0 ]]; }; then bash -c "${cmd:?}"; else sudo -u root bash -c "${cmd:?}"; fi
+  Infoln "updated"
   exit 0
 }
 
@@ -103,9 +113,11 @@ __main () {
       # avoid to infinite loop
       grep -v "^${script_fullpath:?}" |
       # first file fullpath in PATH
-      head -n 1 | cut -d: -f1
-  ) || true
-  debugln "kubectl in PATH (kubectl_bin): $kubectl_bin"
+      head -n 1 | cut -d: -f1 ||
+      # force to return 0
+      true
+  )
+  Debugln "kubectl in PATH (kubectl_bin): $kubectl_bin"
   if [[ ! -x $kubectl_bin ]] || [[ ! -f $kubectl_bin ]]; then
     kubectl_bin="${HOME:?}/bin/kubectl"
     __setupKubectl "${kubectl_bin:?}"
@@ -115,10 +127,10 @@ __main () {
   # main
   if echo "$*" | grep -q -- "--context[[:space:]=]"; then
     # shellcheck disable=SC2001
-    infoln "RUN: ${kubectl_bin:?} $*"
+    Debugln "RUN: ${kubectl_bin:?} $*"
     "${kubectl_bin:?}" "$@" </dev/stdin
   elif [[ $KUBECTL_CONTEXT ]]; then
-    infoln "RUN: ${kubectl_bin:?} --context=${KUBECTL_CONTEXT:?} $*"
+    Debugln "RUN: ${kubectl_bin:?} --context=${KUBECTL_CONTEXT:?} $*"
     "${kubectl_bin:?}" --context="${KUBECTL_CONTEXT:?}" "$@" </dev/stdin
   else
     __displayContext
