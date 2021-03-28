@@ -103,7 +103,7 @@ __selfUpdate () {
 # main
 __main () {
   # subcommands
-  if [[ $1 = self-update ]]; then __updateSelf; fi
+  if [[ $1 = self-update ]]; then __selfUpdate; fi
   # kubectl
   local kubectl_bin
   kubectl_bin=$(
