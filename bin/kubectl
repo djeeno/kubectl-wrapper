@@ -123,7 +123,7 @@ __main () {
     __setupKubectl "${kubectl_bin:?}"
   fi
   # KUBECTL_EXTERNAL_DIFF
-  export KUBECTL_EXTERNAL_DIFF="${KUBECTL_EXTERNAL_DIFF:-$(command -v cdiff)}"
+  export KUBECTL_EXTERNAL_DIFF="${KUBECTL_EXTERNAL_DIFF-$(command -v cdiff || true)}"
   # main
   if echo "$*" | grep -q -- "--context[[:space:]=]"; then
     # shellcheck disable=SC2001
