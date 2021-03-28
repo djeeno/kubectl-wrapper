@@ -117,7 +117,6 @@ __main () {
       # force to return 0
       true
   )
-  Debugln "kubectl in PATH (kubectl_bin): $kubectl_bin"
   if [[ ! -x $kubectl_bin ]] || [[ ! -f $kubectl_bin ]]; then
     kubectl_bin="${HOME:?}/bin/kubectl"
     __setupKubectl "${kubectl_bin:?}"
